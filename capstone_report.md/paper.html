@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Which pages under-capture clicks? A within-client CTR screening method, checked for month-to-month persistence</title>
+<meta name="description" content="A research paper on screening search pages whose click-through rate is persistently below their own client's norm, validated on three months of FlyRank ML Internship data.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Which pages under-capture clicks? A within-client CTR screening method">
+<meta property="og:description" content="Pages flagged for low CTR in one month stayed low the next month, checked against matched controls on three months of data.">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#0b6e6e">
+<style>
+:root{--bg:#f5f7f8;--ink:#14202b;--muted:#4d5b69;--line:#d3dbe1;--accent:#0b6e6e;--card:#fff;--c1:#0b6e6e;--c2:#b45309;--c3:#0b6e6e;--c4:#8a97a4;--s1:#0b6e6e;--s2:#b45309;--s3:#6b7c8d}
+@media (prefers-color-scheme:dark){:root{--bg:#0f161c;--ink:#e6edf3;--muted:#a3b0bd;--line:#26323d;--accent:#5cc8c0;--card:#16212a;--c1:#5cc8c0;--c2:#f0a35c;--c3:#5cc8c0;--c4:#7d8b99;--s1:#5cc8c0;--s2:#f0a35c;--s3:#8a97a4}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+.wrap{max-width:760px;margin:0 auto;padding:0 20px}
+header{padding:48px 0 8px}
+h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(1.7rem,5.5vw,2.5rem);line-height:1.2;margin:0 0 12px}
+h2{font-family:Georgia,"Times New Roman",serif;font-size:1.45rem;line-height:1.3;margin:44px 0 10px;padding-top:6px;border-top:1px solid var(--line)}
+h3{font-size:1.05rem;margin:24px 0 6px}
+.byline{color:var(--muted);margin:0 0 20px}
+.abstract{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px 22px}
+.abstract h2{border:0;margin:0 0 6px;padding:0;font-size:1.15rem}
+p,li{max-width:70ch}
+.note{color:var(--muted);font-size:.95rem}
+table{border-collapse:collapse;width:100%;font-size:.95rem;margin:12px 0}
+.tw{overflow-x:auto}
+th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{font-weight:600}
+td.n,th.n{text-align:right;white-space:nowrap}
+figure{margin:20px 0}
+figcaption{color:var(--muted);font-size:.93rem;margin-top:4px}
+.chart{width:100%;height:auto;display:block}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .tick,.chart .axis{fill:var(--muted);font-size:12px;font-family:system-ui,sans-serif}
+.chart .val{fill:var(--ink);font-size:13px;font-weight:600;font-family:system-ui,sans-serif}
+.chart .val2{fill:#fff;font-size:13px;font-weight:600;font-family:system-ui,sans-serif}
+@media (prefers-color-scheme:dark){.chart .val2{fill:#0b1218}}
+.chart .line{fill:none;stroke-width:2.5}
+.chart .line.s1,.chart .dot.s1{stroke:var(--c1);fill:var(--c1)}
+.chart .line.s2,.chart .dot.s2{stroke:var(--c2);fill:var(--c2)}
+.chart .line.s1{fill:none}.chart .line.s2{fill:none}
+.sw1{fill:var(--c1)}.sw2{fill:var(--c2)}.sw3{fill:var(--c3)}.sw4{fill:var(--c4)}
+.bar1{fill:var(--c3)}.bar2{fill:var(--c4)}
+.st1{fill:var(--s1)}.st2{fill:var(--s2)}.st3{fill:var(--s3)}
+footer{border-top:1px solid var(--line);color:var(--muted);font-size:.95rem;padding:24px 0 48px;margin-top:48px}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.92em}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <h1>Which pages under-capture clicks? A within-client CTR screening method, checked for month-to-month persistence</h1>
+  <p class="byline">Muneeba &middot; Software Engineering student, Virtual University of Pakistan &middot; FlyRank AI Fluency Program capstone, CTR / Engagement Opportunity Scoring lane</p>
+  <section class="abstract" aria-labelledby="abs">
+    <h2 id="abs">Abstract</h2>
+    <p>Which already-visible pages get fewer search clicks than comparable pages from the same client, and is that gap stable or just noise? I compared each page's click-through rate (CTR) with the pooled CTR of its own client's other pages at the same average position, and flagged only shortfalls that survived an overdispersion-adjusted test. On three months of FlyRank ML Internship data (March to May 2026, 101,000 to 112,000 scored pages per month, from 47 to 56 clients with search data), pages flagged in one month earned about 0.33 times (March to April) and 0.43 times (April to May) the clicks-versus-expected of matched pages the next month. They were also 40% to 52% likely to be flagged again, against 7% to 8% for matched controls. A machine-learning model that tried to predict CTR for unseen clients did not beat a simple baseline, so the final method is a transparent benchmark, not a model. The ranking is a screening aid for human review, based on observed data, and says nothing about whether a change would recover clicks.</p>
+  </section>
+</div></header>
+<main class="wrap">
+
+<h2>1. Introduction</h2>
+<p>A content team with thousands of pages cannot review them all. A useful question is which pages are visible in search results but get fewer clicks than they should. Those are the pages where a better title, meta description or a check of the results page might be worth the time. The decision this work supports is simple: <em>which pages should a person look at first?</em></p>
+<p>"Fewer clicks than they should" needs a yardstick. Raw CTR is misleading because CTR falls steeply with position, and because clients differ in brand strength, audience and topic. I therefore ask a narrower question: <strong>inside one client, which pages get fewer clicks than that client's other pages at the same position?</strong> I also ask whether the answer holds up, because a page that looks bad one month can look bad by chance.</p>
+
+<h2>2. Data</h2>
+<ul>
+  <li><strong>Source:</strong> the FlyRank ML Internship dataset on Hugging Face. Clients, pages and queries are anonymised hashes. No client names, domains, URLs or queries are used or shown here.</li>
+  <li><strong>Exploration:</strong> a fixed example cut for this lane (<code>engagement_fix</code>): 33,202 pages from 44 clients, one 30-day snapshot. It was used to explore the data, to audit the labels and to test methods.</li>
+  <li><strong>Final analysis:</strong> the warehouse table <code>fact_content_daily_performance</code> for three full months, March, April and May 2026. Only three fields were used: search impressions, search clicks and average position. Page-level values were summed or impression-weighted across each month.</li>
+  <li><strong>Exclusions:</strong> pages with fewer than 100 impressions in the month (CTR is too noisy), and pages without a position. No engagement or session data was used.</li>
+</ul>
+<div class="tw"><table>
+<caption class="note" style="text-align:left;caption-side:bottom">Pages per month. "Scored" means at least 100 impressions and a position.</caption>
+<thead><tr><th>Month</th><th class="n">Pages with impressions</th><th class="n">Clients</th><th class="n">Pages scored</th></tr></thead>
+<tbody>
+<tr><td>2026-03</td><td class="n">176,738</td><td class="n">47</td><td class="n">101,441</td></tr>
+<tr><td>2026-04</td><td class="n">194,760</td><td class="n">51</td><td class="n">107,144</td></tr>
+<tr><td>2026-05</td><td class="n">237,910</td><td class="n">56</td><td class="n">112,309</td></tr>
+</tbody></table></div>
+<p>Pages scored in both months: 88,482 (March to April) and 93,247 (April to May).</p>
+
+<h2>3. Methodology</h2>
+<h3>3.1 Two things that did not work</h3>
+<p><strong>The pre-made flag is a rule.</strong> The example cut ships with a flag called <code>needs_ctr_fix</code>. A depth-3 decision tree recovered it with 99.8% accuracy from CTR, position and impressions alone (roughly: position within about 10, at least about 100 impressions, CTR at most 2%). A model trained to predict it would only rediscover that rule, so I did not use it as a target. A second flag, <code>needs_engagement_fix</code>, is true for every page and cannot rank anything.</p>
+<p><strong>A CTR model did not generalise.</strong> I trained a gradient-boosted model on position, impressions and content features and tested it on whole clients it had never seen (grouped split, so one client never appears on both sides). It barely beat a position-bucket baseline: R² 0.051 against about 0 on the plain split, and an impression-weighted R² of &minus;0.013 against &minus;0.022 for a Poisson version. I treat this as a negative result: position and content tiers do not predict CTR for a new client.</p>
+
+<h3>3.2 The method I kept: a within-client benchmark</h3>
+<ol>
+  <li><strong>Position buckets:</strong> &le;1.5, 1.5&ndash;2.5, 2.5&ndash;3.5, 3.5&ndash;4.5, 4.5&ndash;5.5, 5.5&ndash;7.5, 7.5&ndash;10.5, 10.5&ndash;15.5, 15.5&ndash;20.5, &gt;20.5.</li>
+  <li><strong>Expected CTR for a page:</strong> the pooled CTR (total clicks ÷ total impressions) of the <em>other</em> pages of the same client in the same bucket (leave-one-out), blended with the pooled CTR of all clients in that bucket. The blend weight is <code>n / (n + K)</code>, where <code>n</code> is the other pages' impressions and <code>K = 50,000</code>.</li>
+  <li><strong>Test:</strong> clicks below expected, with the noise level widened by a dispersion factor <code>&phi;</code>. Pure luck would give &phi; = 1, but real pages also differ in query mix and results-page layout. &phi; is estimated robustly from the median squared standardised residual: 1.7 to 2.0 in the warehouse months, 4.9 in the example cut.</li>
+  <li><strong>Flag:</strong> one-sided <code>p &lt; 0.01</code> and at least 5 estimated missed clicks (expected minus actual). About 3.0% to 3.4% of scored pages are flagged each month.</li>
+</ol>
+<p class="note">A plain Poisson test flagged 10.9% of pages in the example cut. Pure noise would flag about 1%, so the overdispersion adjustment cut the flagged share to 2.4%. In that cut, changing <code>K</code> from 5,000 to 5,000,000 left the flagged share at 10.8% to 11.2%, and 76 to 100 of the top 100 pages stayed the same.</p>
+
+<h3>3.3 Validation: does the flag persist?</h3>
+<p>The flag is computed in month A. Month B is independent data, so if a gap were only luck, those pages would look normal in B. I checked two ways. First, how often flagged pages were flagged again in B. Second, a <strong>matched control</strong> comparison: for each flagged page I took non-flagged pages from the same client, the same position bucket and the same impressions tercile in A, then compared B clicks &divide; expected as a ratio of geometric means. Intervals are 95% from a client-level bootstrap (2,000 resamples), so pages from the same client are not treated as independent.</p>
+
+<h2>4. Results</h2>
+<h3>4.1 Flagged pages stayed low</h3>
+<div class="tw"><table>
+<thead><tr><th></th><th class="n">Mar &rarr; Apr</th><th class="n">Apr &rarr; May</th></tr></thead>
+<tbody>
+<tr><td>Pages flagged in A</td><td class="n">3,413</td><td class="n">3,611</td></tr>
+<tr><td>Clients with a flagged page</td><td class="n">22</td><td class="n">29</td></tr>
+<tr><td>B clicks &divide; expected, flagged vs matched controls</td><td class="n">0.329 (0.291&ndash;0.372)</td><td class="n">0.429 (0.375&ndash;0.477)</td></tr>
+<tr><td>Flagged again in B, flagged pages</td><td class="n">51.8%</td><td class="n">39.7%</td></tr>
+<tr><td>Flagged again in B, matched controls</td><td class="n">8.0%</td><td class="n">7.3%</td></tr>
+<tr><td>Difference in flag rate</td><td class="n">43.8 points (39.8&ndash;48.7)</td><td class="n">32.3 points (26.7&ndash;38.4)</td></tr>
+<tr><td>Largest client's share of flagged pages</td><td class="n">26.1% (23.0% of all pages)</td><td class="n">26.0% (23.0% of all pages)</td></tr>
+</tbody></table></div>
+<figure>
+  <svg viewBox="0 0 640 270" role="img" aria-labelledby="c2t c2d" class="chart"><title id="c2t">Share of pages flagged again next month, flagged pages versus matched controls</title><desc id="c2d">March to April: 51.8 percent versus 8.0 percent. April to May: 39.7 percent versus 7.3 percent.</desc><line x1="52" x2="624" y1="214.0" y2="214.0" class="grid"/><text x="44" y="218.0" text-anchor="end" class="tick">0%</text><line x1="52" x2="624" y1="151.3" y2="151.3" class="grid"/><text x="44" y="155.3" text-anchor="end" class="tick">20%</text><line x1="52" x2="624" y1="88.7" y2="88.7" class="grid"/><text x="44" y="92.7" text-anchor="end" class="tick">40%</text><line x1="52" x2="624" y1="26.0" y2="26.0" class="grid"/><text x="44" y="30.0" text-anchor="end" class="tick">60%</text><rect x="125.0" y="51.7" width="65" height="162.3" class="bar1"/><text x="157.5" y="45.7" text-anchor="middle" class="val">51.8%</text><rect x="200.0" y="188.9" width="65" height="25.1" class="bar2"/><text x="232.5" y="182.9" text-anchor="middle" class="val">8.0%</text><text x="195.0" y="234" text-anchor="middle" class="tick">Mar → Apr</text><rect x="411.0" y="89.6" width="65" height="124.4" class="bar1"/><text x="443.5" y="83.6" text-anchor="middle" class="val">39.7%</text><rect x="486.0" y="191.1" width="65" height="22.9" class="bar2"/><text x="518.5" y="185.1" text-anchor="middle" class="val">7.3%</text><text x="481.0" y="234" text-anchor="middle" class="tick">Apr → May</text><rect x="62" y="252" width="10" height="10" class="sw3"/><text x="78" y="261" class="tick">Flagged last month</text><rect x="232" y="252" width="10" height="10" class="sw4"/><text x="248" y="261" class="tick">Matched controls (same client, position, size)</text></svg>
+  <figcaption>Figure 1. Share of pages flagged again the next month. Matched controls come from the same client, position bucket and impressions tercile.</figcaption>
+</figure>
+<p>Both month pairs point the same way. One caution: matched controls are themselves flagged 7% to 8% of the time, much higher than the 2% base rate across all other pages. That is why the matched comparison matters: flagged pages tend to be larger, and larger pages are easier to flag.</p>
+
+<h3>4.2 The whole ranking carries signal</h3>
+<p>Pages were split into ten groups by how far below expected they were in A. The lower the group, the lower the next month's clicks &divide; expected, in both month pairs.</p>
+<figure>
+  <svg viewBox="0 0 640 300" role="img" aria-labelledby="c1t c1d" class="chart"><title id="c1t">Next-month clicks versus expected, by decile of last month's score</title><desc id="c1d">Both lines rise from about 0.3 to 0.5 for the lowest decile to about 1.8 for the highest decile.</desc><line x1="52" x2="624" y1="250.0" y2="250.0" class="grid"/><text x="44" y="254.0" text-anchor="end" class="tick">0</text><line x1="52" x2="624" y1="194.5" y2="194.5" class="grid"/><text x="44" y="198.5" text-anchor="end" class="tick">0.5</text><line x1="52" x2="624" y1="139.0" y2="139.0" class="grid"/><text x="44" y="143.0" text-anchor="end" class="tick">1</text><line x1="52" x2="624" y1="83.5" y2="83.5" class="grid"/><text x="44" y="87.5" text-anchor="end" class="tick">1.5</text><line x1="52" x2="624" y1="28.0" y2="28.0" class="grid"/><text x="44" y="32.0" text-anchor="end" class="tick">2</text><text x="52.0" y="268" text-anchor="middle" class="tick">1</text><text x="115.6" y="268" text-anchor="middle" class="tick">2</text><text x="179.1" y="268" text-anchor="middle" class="tick">3</text><text x="242.7" y="268" text-anchor="middle" class="tick">4</text><text x="306.2" y="268" text-anchor="middle" class="tick">5</text><text x="369.8" y="268" text-anchor="middle" class="tick">6</text><text x="433.3" y="268" text-anchor="middle" class="tick">7</text><text x="496.9" y="268" text-anchor="middle" class="tick">8</text><text x="560.4" y="268" text-anchor="middle" class="tick">9</text><text x="624.0" y="268" text-anchor="middle" class="tick">10</text><polyline points="52.0,214.1 115.6,197.8 179.1,190.1 242.7,181.8 306.2,173.6 369.8,165.8 433.3,156.9 496.9,147.3 560.4,123.0 624.0,51.3" class="line s1"/><circle cx="52.0" cy="214.1" r="3.5" class="dot s1"/><circle cx="115.6" cy="197.8" r="3.5" class="dot s1"/><circle cx="179.1" cy="190.1" r="3.5" class="dot s1"/><circle cx="242.7" cy="181.8" r="3.5" class="dot s1"/><circle cx="306.2" cy="173.6" r="3.5" class="dot s1"/><circle cx="369.8" cy="165.8" r="3.5" class="dot s1"/><circle cx="433.3" cy="156.9" r="3.5" class="dot s1"/><circle cx="496.9" cy="147.3" r="3.5" class="dot s1"/><circle cx="560.4" cy="123.0" r="3.5" class="dot s1"/><circle cx="624.0" cy="51.3" r="3.5" class="dot s1"/><polyline points="52.0,194.3 115.6,186.8 179.1,181.1 242.7,177.4 306.2,173.7 369.8,166.5 433.3,156.1 496.9,129.0 560.4,110.8 624.0,52.1" class="line s2"/><circle cx="52.0" cy="194.3" r="3.5" class="dot s2"/><circle cx="115.6" cy="186.8" r="3.5" class="dot s2"/><circle cx="179.1" cy="181.1" r="3.5" class="dot s2"/><circle cx="242.7" cy="177.4" r="3.5" class="dot s2"/><circle cx="306.2" cy="173.7" r="3.5" class="dot s2"/><circle cx="369.8" cy="166.5" r="3.5" class="dot s2"/><circle cx="433.3" cy="156.1" r="3.5" class="dot s2"/><circle cx="496.9" cy="129.0" r="3.5" class="dot s2"/><circle cx="560.4" cy="110.8" r="3.5" class="dot s2"/><circle cx="624.0" cy="52.1" r="3.5" class="dot s2"/><text x="338.0" y="292" text-anchor="middle" class="axis">Decile of last month's score (1 = fewest clicks versus expected)</text><text transform="rotate(-90)" x="-139.0" y="14" text-anchor="middle" class="axis">Median clicks ÷ expected, next month</text><rect x="62" y="22" width="10" height="10" class="sw1"/><text x="78" y="31" class="tick">Mar → Apr</text><rect x="162" y="22" width="10" height="10" class="sw2"/><text x="178" y="31" class="tick">Apr → May</text></svg>
+  <figcaption>Figure 2. Median clicks &divide; expected in month B, by decile of the month-A score. The values are not centred on 1: expected CTR is pulled up by a few very high-CTR pages, so only the differences between groups should be read.</figcaption>
+</figure>
+
+<h3>4.3 Where the persistent shortfall sits</h3>
+<p>1,768 pages (March to April) and 1,433 pages (April to May) were flagged in <em>both</em> months, from 19 and 27 clients. Most of their shortfall sits just below the top results.</p>
+<figure>
+  <svg viewBox="0 0 640 190" role="img" aria-labelledby="c3t c3d" class="chart"><title id="c3t">Where the persistent shortfall sits, by average position</title><desc id="c3d">Most of the shortfall of pages flagged in both months sits at positions 3.6 to 10.5: 57.6 percent for March to April and 70.0 percent for April to May.</desc><text x="90" y="52" text-anchor="end" class="tick">Mar → Apr</text><rect x="100.0" y="30" width="109.7" height="32" class="st1"/><text x="154.8" y="51" text-anchor="middle" class="val2">21.5%</text><rect x="209.7" y="30" width="293.8" height="32" class="st2"/><text x="356.5" y="51" text-anchor="middle" class="val2">57.6%</text><rect x="503.4" y="30" width="106.6" height="32" class="st3"/><text x="556.7" y="51" text-anchor="middle" class="val2">20.9%</text><text x="90" y="112" text-anchor="end" class="tick">Apr → May</text><rect x="100.0" y="90" width="66.8" height="32" class="st1"/><text x="133.4" y="111" text-anchor="middle" class="val2">13.1%</text><rect x="166.8" y="90" width="357.0" height="32" class="st2"/><text x="345.3" y="111" text-anchor="middle" class="val2">70.0%</text><rect x="523.8" y="90" width="85.7" height="32" class="st3"/><text x="566.6" y="111" text-anchor="middle" class="val2">16.8%</text><rect x="100" y="160" width="10" height="10" class="st1"/><text x="116" y="169" class="tick">Position ≤ 3.5</text><rect x="250" y="160" width="10" height="10" class="st2"/><text x="266" y="169" class="tick">Position 3.6–10.5</text><rect x="400" y="160" width="10" height="10" class="st3"/><text x="416" y="169" class="tick">Position >10.5</text></svg>
+  <figcaption>Figure 3. Share of the estimated missed clicks of persistent pages, by average position in month B. Pages: &le;3.5: 297 and 77; 3.6&ndash;10.5: 982 and 969; &gt;10.5: 489 and 387 (Mar &rarr; Apr and Apr &rarr; May).</figcaption>
+</figure>
+
+<h3>4.4 What the example cut showed</h3>
+<p>On the single 30-day example cut, the top four flagged pages held about 40% of all flagged missed clicks (one page alone held 35%). Three of those four sat at position 1&ndash;1.5 and one at position 8.4, each with a CTR far below expectation, which looks more like a data or query-mix oddity than a title problem. No flagged page met the same extreme rule in the March and April warehouse windows, and I did not investigate why.</p>
+
+<h2>5. Limitations and honest framing</h2>
+<ul>
+  <li><strong>Observed, not causal.</strong> A persistent gap shows that a page keeps getting fewer clicks than its siblings. It does not show why, and it does not show that editing the page would recover clicks. I have no before-and-after change data.</li>
+  <li><strong>Persistent does not mean fixable.</strong> The gap can come from query mix, branded searches, results-page features or ranking features outside the page's control.</li>
+  <li><strong>Average position hides the query mix.</strong> A page's average position blends many queries. The query-level table in the warehouse (<code>fact_content_query_90d</code>) was not used here.</li>
+  <li><strong>Missed clicks are estimates,</strong> measured against a benchmark made from other pages of the same client. If a client's whole set of pages is weak, the benchmark is weak too. It is also heavy-tailed, so a small group of pages carries a large share of the total.</li>
+  <li><strong>Three months, one dataset.</strong> Two consecutive month pairs agree in direction but differ in size (0.33 versus 0.43). I have not tested seasons, other clients or other data sources.</li>
+  <li><strong>The ratio has no natural reference of 1.</strong> Median clicks &divide; expected for non-flagged pages is below 1 (0.72 and 0.79), so ratios are compared between groups, not against 1.</li>
+  <li><strong>Small stratum effects.</strong> Matching used client, position bucket and impressions tercile. Other differences between pages (age, topic, length) were not matched.</li>
+</ul>
+
+<h2>6. Ranked recommendations</h2>
+<p>These are suggestions for human review in priority order, based on pages flagged in <em>both</em> months, ranked inside each client by estimated missed clicks (top 5 per client gives 69 pages from 19 clients, or 93 from 27 clients). They are not predictions of gain.</p>
+<ol>
+  <li><strong>Pages at average position 3.6&ndash;10.5, flagged twice.</strong> This is the largest group: 58% to 70% of the persistent shortfall. <em>Review the title and meta description first</em>, since the page is already visible and the gap is stable.</li>
+  <li><strong>Pages at position 3.5 or better, flagged twice.</strong> Fewer pages, but a larger gap per page. <em>Check the results page and query mix before changing content</em>: branded queries or results-page features may explain a low CTR.</li>
+  <li><strong>Pages beyond position 10.5, flagged twice.</strong> 17% to 21% of the shortfall. <em>Monitor</em>: the main lever is ranking, not the snippet.</li>
+  <li><strong>Pages flagged only once.</strong> <em>Monitor for one more month</em> before spending time. Between 48% and 60% of one-month flags did not repeat.</li>
+  <li><strong>Pages with clicks under 5% of a large expectation.</strong> <em>Verify the data and query mix first.</em> This rule triggered four times in the example cut and not in the monthly warehouse windows.</li>
+</ol>
+
+<h2>7. Reproducibility</h2>
+<p>The code is in my capstone repository on GitHub (<a href="https://github.com/muneebakk" rel="noopener">github.com/muneebakk</a>), under <code>work/</code>. Notebooks 1 to 3b run on the example cut and cover the exploration, the label audit, the model that did not work and the robustness checks. Scripts 4 and 5 run on the warehouse and cover the persistence test and the matched controls. Access to the data needs a free Hugging Face account and a read token, plus accepting the dataset terms.</p>
+<div class="tw"><table>
+<thead><tr><th>Setting</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Minimum impressions per page per month</td><td>100</td></tr>
+<tr><td>Position buckets</td><td>10 buckets, edges listed in section 3.2</td></tr>
+<tr><td>Shrinkage constant <code>K</code></td><td>50,000 impressions</td></tr>
+<tr><td>Flag</td><td>one-sided <code>p &lt; 0.01</code> after dividing noise by &phi;, and at least 5 missed clicks</td></tr>
+<tr><td>Dispersion &phi;</td><td>median of squared Pearson residuals ÷ 0.4549</td></tr>
+<tr><td>Matching strata</td><td>client &times; position bucket &times; impressions tercile</td></tr>
+<tr><td>Confidence intervals</td><td>client-level bootstrap, 2,000 resamples, seed 42</td></tr>
+<tr><td>Train/test split for the model that did not work</td><td>grouped by client, 20% of clients held out, seed 42</td></tr>
+</tbody></table></div>
+
+<h2>8. Acknowledgments and data credit</h2>
+<p>Built on the <a href="https://flyrank.ai" rel="noopener">FlyRank ML Internship dataset</a>. Thank you to the FlyRank AI Fluency Program for the data and the capstone brief. I wrote the analysis code with an AI assistant as a build partner and ran it myself on the real data.</p>
+
+</main>
+<footer><div class="wrap">Muneeba &middot; <a href="https://github.com/muneebakk" rel="noopener">GitHub</a> &middot; <a href="https://www.linkedin.com/in/muneeba-shouket-8065a328b/" rel="noopener">LinkedIn</a></div></footer>
+</body>
+</html>
